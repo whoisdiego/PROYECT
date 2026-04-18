@@ -54,25 +54,61 @@ defmodule FiniteAutomaton do
     explore(rest ++ new_sets, sigma, delta, new_visited, new_delta)
   end
 
-def e_closure({_q, _sigma, delta, _q0, _f}, states) do
-  initial = MapSet.new(states)
-  bfs_epsilon(initial, initial, delta)
-end
-
-# BFS sobre transiciones :eps
-defp bfs_epsilon(frontier, visited, delta) do
-  next =
-    frontier
-    |> Enum.flat_map(fn q -> Map.get(delta, {q, :eps}, []) end)
-    |> MapSet.new()
-    |> MapSet.difference(visited)
-
-  if MapSet.size(next) == 0 do
-    visited
-  else
-    bfs_epsilon(next, MapSet.union(visited, next), delta)
+  def e_closure({_q, _sigma, delta, _q0, _f}, states) do
+    initial = MapSet.new(states)
+    bfs_epsilon(initial, initial, delta)
   end
-end
+
+  # BFS sobre transiciones :eps
+  def bfs_epsilon(frontier, visited, delta) do
+    next =
+      frontier
+      |> Enum.flat_map(fn q -> Map.get(delta, {q, :eps}, []) end)
+      |> MapSet.new()
+      |> MapSet.difference(visited)
+
+    if MapSet.size(next) == 0 do
+      visited
+    else
+      bfs_epsilon(next, MapSet.union(visited, next), delta)
+    end
+  end
+
+  def e_determinize({_q, sigma, delta, q0, f} = nfa) do
+    start_set = e_closure(nfa, [q0])
+    {dfa_states, dfa_delta} =
+      dfs_explore([start_set], sigma, delta, nfa, MapSet.new([start_set]), %{})
+    f_set = MapSet.new(f)
+    dfa_f = Enum.filter(dfa_states, fn s -> not MapSet.disjoint?(s, f_set) end)
+    {dfa_states, sigma, dfa_delta, start_set, dfa_f}
+  end
+
+  # DFS sobre la pila open (equivale al WHILE del pseudocódigo)
+  def dfs_explore([], _sigma, _delta, _nfa, visited, acc_delta),
+    do: {MapSet.to_list(visited), acc_delta}
+
+  def dfs_explore([r | open], sigma, delta, nfa, visited, acc_delta) do
+    {new_open, new_delta} =
+      Enum.reduce(sigma, {open, acc_delta}, fn symbol, {stack, d_acc} ->
+        raw_targets =
+          r
+          |> MapSet.to_list()
+          |> Enum.flat_map(fn q -> Map.get(delta, {q, symbol}, []) end)
+
+        s = e_closure(nfa, raw_targets)
+
+        if MapSet.size(s) == 0 do
+          {stack, d_acc}
+        else
+          d_acc = Map.put(d_acc, {r, symbol}, s)
+          stack = if MapSet.member?(visited, s), do: stack, else: [s | stack]
+          {stack, d_acc}
+        end
+      end)
+
+    new_visited = MapSet.put(visited, r)
+    dfs_explore(new_open, sigma, delta, nfa, new_visited, new_delta)
+  end
 
 
 end
