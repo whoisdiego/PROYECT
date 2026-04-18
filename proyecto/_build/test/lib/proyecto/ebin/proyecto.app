@@ -1,0 +1,1 @@
+{application,proyecto,[{modules,['Elixir.FiniteAutomaton']},{optional_applications,[]},{applications,[kernel,stdlib,elixir,logger]},{description,"proyecto"},{registered,[]},{vsn,"0.1.0"}]}.
