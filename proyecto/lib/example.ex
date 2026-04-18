@@ -54,5 +54,25 @@ defmodule FiniteAutomaton do
     explore(rest ++ new_sets, sigma, delta, new_visited, new_delta)
   end
 
+def e_closure({_q, _sigma, delta, _q0, _f}, states) do
+  initial = MapSet.new(states)
+  bfs_epsilon(initial, initial, delta)
+end
+
+# BFS sobre transiciones :eps
+defp bfs_epsilon(frontier, visited, delta) do
+  next =
+    frontier
+    |> Enum.flat_map(fn q -> Map.get(delta, {q, :eps}, []) end)
+    |> MapSet.new()
+    |> MapSet.difference(visited)
+
+  if MapSet.size(next) == 0 do
+    visited
+  else
+    bfs_epsilon(next, MapSet.union(visited, next), delta)
+  end
+end
+
 
 end
